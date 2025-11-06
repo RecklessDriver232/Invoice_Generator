@@ -4,6 +4,8 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
 from reportlab.lib.enums import TA_LEFT, TA_RIGHT, TA_CENTER
+from reportlab.platypus import Image
+import os
 from datetime import datetime
 
 
@@ -104,30 +106,44 @@ class InvoiceGenerator:
         canvas_obj.restoreState()
     
     def add_logo_and_invoice_details(self, company_info, invoice_number, invoice_date, po_number=None, agreement=None):
+
+        if self.logo_path and os.path.exists(self.logo_path):
+            try:
+                # Small logo - 0.4 inch (about 28-30 pixels like your reference)
+                logo = Image(self.logo_path, width=0.4*inch, height=0.4*inch)
+                logo.hAlign = 'CENTER'
+                
+                # Center the logo at the top
+                self.elements.append(logo)
+                self.elements.append(Spacer(1, 0.15*inch))
+            except Exception as e:
+                print(f"Warning: Could not load logo - {e}")
+    
+        # Company info and invoice details
         left_column_data = [
             Paragraph(company_info['name'], self.heading_style),
             Paragraph(company_info['address'], self.small_style),
-            Paragraph(f"{company_info['city']},{company_info['state']}.{company_info['pincode']}", self.small_style),
+            Paragraph(f"{company_info['city']}, {company_info['state']}. {company_info['pincode']}", self.small_style),
             Paragraph(f"GST NO: {company_info['gstin']}", self.small_style),
             Paragraph(company_info['email'], self.small_style),
         ]
-        
+
         right_column_data = [
             Paragraph(f'<u>{self._format_date(invoice_date)}</u>', self.normal_style),
             Spacer(1, 0.15*inch),
             Paragraph(f'INVOICE {invoice_number}', self.invoice_value_style),
         ]
-        
+
         if po_number:
             right_column_data.append(Spacer(1, 0.15*inch))
             right_column_data.append(Paragraph('PO NUMBER', self.invoice_label_style))
             right_column_data.append(Paragraph(po_number, self.normal_style))
-        
+
         if agreement:
             right_column_data.append(Spacer(1, 0.15*inch))
             right_column_data.append(Paragraph('AGREEMENT', self.invoice_label_style))
             right_column_data.append(Paragraph(agreement, self.normal_style))
-        
+
         top_section_table = Table(
             [[left_column_data, right_column_data]], 
             colWidths=[3.25*inch, 3.25*inch]
@@ -139,6 +155,7 @@ class InvoiceGenerator:
         ]))
         self.elements.append(top_section_table)
         self.elements.append(Spacer(1, 0.25*inch))
+
     
     def add_party_details(self, seller_info, buyer_info):
         seller_text = f"{seller_info['name']}\n{seller_info['address']}\n{seller_info['city']}, {seller_info['state']} - {seller_info['pincode']}"
